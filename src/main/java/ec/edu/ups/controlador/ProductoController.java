@@ -2,11 +2,13 @@ package ec.edu.ups.controlador;
 
 import ec.edu.ups.dao.ProductoDAO;
 import ec.edu.ups.modelo.Producto;
+import ec.edu.ups.util.MensajeInternacionalizacionHandler;
 import ec.edu.ups.vista.CarritoAnadirView;
 import ec.edu.ups.vista.ProductoAnadirView;
 import ec.edu.ups.vista.ProductoListaView;
 import ec.edu.ups.vista.ProductoActualizarView;
 import ec.edu.ups.vista.ProductoEliminarView;
+
 
 
 import java.awt.event.ActionEvent;
@@ -68,7 +70,7 @@ public class ProductoController {
 
         productoEliminarView.getEliminarButton().addActionListener(new ActionListener() {
             @Override
-            public void actionPerformed(ActionEvent e){}
+            public void actionPerformed(ActionEvent e){ eliminarProducto();}
         });
 
     }
@@ -107,6 +109,33 @@ public class ProductoController {
             carritoAnadirView.getTxtNombre().setText(producto.getNombre());
             carritoAnadirView.getTxtPrecio().setText(String.valueOf(producto.getPrecio()));
         }
+
+    }
+
+    private  void eliminarProducto(){
+            String textCodigo = productoEliminarView.getTextField2().getText().trim();
+            if (textCodigo.isEmpty()) {
+                productoEliminarView.mostrarMensaje(mensInter.get("producto.mensaje.ingresar.codigo"));
+                return;
+            }
+            if (!textCodigo.matches("[1-9]\\d*|0")) {
+                productoEliminarView.mostrarMensaje(mi.get("producto.mensaje.codigo.invalido"));
+                return;
+            }
+            int codigo = Integer.parseInt(textCodigo);
+            Producto producto = productoDAO.buscarPorCodigo(codigo);
+            if (producto == null) {
+                productoEliminarView.mostrarMensaje(mi.get("producto.mensaje.no.encontrado"));
+                return;
+            }
+            boolean confirmado = productoEliminarView.configurarEliminacion(mensInter.get("producto.mensaje.eliminar.pregunta"));
+            if (!confirmado) {
+                productoEliminarView.mostrarMensaje(mi.get("producto.mensaje.eliminacion.cancelada"));
+                return;
+            }
+            productoDAO.eliminar(codigo);
+            productoEliminarView.mostrarMensaje(mi.get("producto.mensaje.eliminado.correctamente"));
+            productoEliminarView.limpiarCampos();
 
     }
 }

@@ -1,5 +1,7 @@
 package ec.edu.ups.vista;
 
+import ec.edu.ups.util.MensajeInternacionalizacionHandler;
+
 import javax.swing.*;
 
 
@@ -10,8 +12,10 @@ public class ProductoEliminarView extends JInternalFrame{
     private JButton buscarButton;
     private JButton eliminarButton;
     private JPanel panelPrincipal;
+    private MensajeInternacionalizacionHandler mensInter;
 
-    public ProductoEliminarView() {
+
+    public ProductoEliminarView(MensajeInternacionalizacionHandler mensInter ){
     setContentPane(panelPrincipal);
     setTitle("Eliminacion de producto");
     setDefaultCloseOperation(JInternalFrame.DISPOSE_ON_CLOSE);
@@ -19,6 +23,8 @@ public class ProductoEliminarView extends JInternalFrame{
     setClosable(true);
     setIconifiable(true);
     setResizable(true);
+    this.mensInter = mensInter;
+
     }
 
 
@@ -82,6 +88,10 @@ public class ProductoEliminarView extends JInternalFrame{
         codigo.setText("");
         nombre.setText("");
         precio.setText("");
+    }
+
+    public void mostrarMensaje(String mensaje) {
+        JOptionPane.showMessageDialog(this, mensaje);
     }
 
 
