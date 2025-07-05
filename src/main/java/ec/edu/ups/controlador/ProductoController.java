@@ -70,7 +70,7 @@ public class ProductoController {
 
         productoEliminarView.getEliminarButton().addActionListener(new ActionListener() {
             @Override
-            public void actionPerformed(ActionEvent e){ eliminarProducto();}
+            public void actionPerformed(ActionEvent e){ /*eliminarProducto();*/}
         });
 
     }
@@ -112,7 +112,7 @@ public class ProductoController {
 
     }
 
-    private  void eliminarProducto(){
+    /*private  void eliminarProducto(){
             String textCodigo = productoEliminarView.getTextField2().getText().trim();
             if (textCodigo.isEmpty()) {
                 productoEliminarView.mostrarMensaje(mensInter.get("producto.mensaje.ingresar.codigo"));
@@ -137,5 +137,5 @@ public class ProductoController {
             productoEliminarView.mostrarMensaje(mi.get("producto.mensaje.eliminado.correctamente"));
             productoEliminarView.limpiarCampos();
 
-    }
+    }*/
 }

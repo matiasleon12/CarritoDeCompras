@@ -15,7 +15,7 @@ public class ProductoEliminarView extends JInternalFrame{
     private MensajeInternacionalizacionHandler mensInter;
 
 
-    public ProductoEliminarView(MensajeInternacionalizacionHandler mensInter ){
+    public ProductoEliminarView(/*MensajeInternacionalizacionHandler mensInter*/){
     setContentPane(panelPrincipal);
     setTitle("Eliminacion de producto");
     setDefaultCloseOperation(JInternalFrame.DISPOSE_ON_CLOSE);
