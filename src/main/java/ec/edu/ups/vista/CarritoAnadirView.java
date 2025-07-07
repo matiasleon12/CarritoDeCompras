@@ -1,5 +1,7 @@
 package ec.edu.ups.vista;
 
+import ec.edu.ups.util.MensajeInternacionalizacionHandler;
+
 import javax.swing.*;
 import javax.swing.table.DefaultTableModel;
 
@@ -17,6 +19,8 @@ public class CarritoAnadirView extends JInternalFrame {
     private JButton btnLimpiar;
     private JComboBox cbxCantidad;
     private JPanel panelPrincipal;
+
+    private MensajeInternacionalizacionHandler mensInter;
 
     public CarritoAnadirView(){
 
@@ -95,5 +99,10 @@ public class CarritoAnadirView extends JInternalFrame {
 
     public void mostrarMensaje(String mensaje) {
         JOptionPane.showMessageDialog(this, mensaje);
+    }
+
+    public void setMensajeHandler(MensajeInternacionalizacionHandler mensInter) {
+        this.mensInter = mensInter;
+
     }
 }

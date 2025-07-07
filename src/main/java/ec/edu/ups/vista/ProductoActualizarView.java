@@ -1,6 +1,12 @@
 package ec.edu.ups.vista;
 
+import ec.edu.ups.controlador.ProductoController;
+import ec.edu.ups.modelo.Producto;
+import ec.edu.ups.util.MensajeInternacionalizacionHandler;
+
 import javax.swing.*;
+import javax.swing.table.DefaultTableModel;
+import java.util.List;
 
 public class ProductoActualizarView extends JInternalFrame{
     private JButton buscarButton;
@@ -10,7 +16,12 @@ public class ProductoActualizarView extends JInternalFrame{
     private JTextField textField3;
     private JPanel panelPrincipal;
 
-    public ProductoActualizarView(){
+    private MensajeInternacionalizacionHandler mensInter;
+    private DefaultTableModel modelo;
+    private final ProductoController productoController;
+
+    public ProductoActualizarView(ProductoController productoController){
+        this.productoController = productoController;
         setContentPane(panelPrincipal);
         setTitle("Actualizacion de producto");
         setDefaultCloseOperation(JInternalFrame.DISPOSE_ON_CLOSE);
@@ -18,6 +29,8 @@ public class ProductoActualizarView extends JInternalFrame{
         setClosable(true);
         setIconifiable(true);
         setResizable(true);
+
+
     }
 
     public JButton getBuscarButton() {
@@ -66,5 +79,21 @@ public class ProductoActualizarView extends JInternalFrame{
 
     public void setPanelPrincipal(JPanel panelPrincipal) {
         this.panelPrincipal = panelPrincipal;
+    }
+
+    public void setMensajeHandler(MensajeInternacionalizacionHandler mensInter) {
+        this.mensInter = mensInter;
+
+    }
+
+    public void cargarTabla(List<Producto> lista) {
+        modelo.setRowCount(0);
+        for (Producto p : lista) {
+            modelo.addRow(new Object[]{p.getCodigo(), p.getNombre(), p.getPrecio()});
+        }
+    }
+
+    public void mostrarMensaje(String mensaje) {
+        JOptionPane.showMessageDialog(this, mensaje);
     }
 }

@@ -1,11 +1,13 @@
 package ec.edu.ups.vista;
 
 import ec.edu.ups.modelo.Producto;
+import ec.edu.ups.util.MensajeInternacionalizacionHandler;
 
 import javax.swing.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.util.List;
+import java.awt.*;
 
 public class   ProductoAnadirView extends JInternalFrame {
 
@@ -15,6 +17,8 @@ public class   ProductoAnadirView extends JInternalFrame {
     private JTextField txtCodigo;
     private JButton btnAceptar;
     private JButton btnLimpiar;
+
+    private MensajeInternacionalizacionHandler mensInter;
 
     public ProductoAnadirView() {
 
@@ -28,6 +32,9 @@ public class   ProductoAnadirView extends JInternalFrame {
         //setLocationRelativeTo(null);
         //setVisible(true);
         //pack();
+        setIconoEscalado(btnAceptar, "imagenes/icono_limpiar.png", 25, 25);
+        setIconoEscalado(btnLimpiar, "imagenes/aceptar.png", 25, 25);
+
 
         btnLimpiar.addActionListener(new ActionListener() {
             @Override
@@ -36,6 +43,41 @@ public class   ProductoAnadirView extends JInternalFrame {
             }
         });
     }
+    private void setIconoEscalado(JButton boton, String ruta, int ancho, int alto) {
+        try {
+            java.net.URL url = getClass().getClassLoader().getResource(ruta);
+            if (url != null) {
+                Image imagen = new ImageIcon(url).getImage().getScaledInstance(ancho, alto, Image.SCALE_SMOOTH);
+                boton.setIcon(new ImageIcon(imagen));
+            }
+        } catch (Exception e) {
+            System.err.println("Error cargando imagen " + ruta + " → " + e.getMessage());
+        }
+
+    }
+
+    public void mostrarMensaje(String mensaje) {
+        JOptionPane.showMessageDialog(this, mensaje);
+    }
+
+    public void limpiarCampos() {
+        txtCodigo.setText("");
+        txtNombre.setText("");
+        txtPrecio.setText("");
+    }
+
+    public void mostrarProductos(List<Producto> productos) {
+        for (Producto producto : productos) {
+            System.out.println(producto);
+        }
+    }
+
+    public void setMensajeHandler(MensajeInternacionalizacionHandler mensInter) {
+        this.mensInter = mensInter;
+
+    }
+
+
 
     public JPanel getPanelPrincipal() {
         return panelPrincipal;
@@ -85,19 +127,5 @@ public class   ProductoAnadirView extends JInternalFrame {
         this.btnLimpiar = btnLimpiar;
     }
 
-    public void mostrarMensaje(String mensaje) {
-        JOptionPane.showMessageDialog(this, mensaje);
-    }
 
-    public void limpiarCampos() {
-        txtCodigo.setText("");
-        txtNombre.setText("");
-        txtPrecio.setText("");
-    }
-
-    public void mostrarProductos(List<Producto> productos) {
-        for (Producto producto : productos) {
-            System.out.println(producto);
-        }
-    }
 }

@@ -31,6 +31,11 @@ public class CarritoDAOMemoria implements CarritoDAO {
     }
 
     @Override
+    public void limpiar(Carrito carrito) {
+
+    }
+
+    @Override
     public void actualizar(Carrito carrito) {
         for (int i = 0; i < carritos.size(); i++) {
             if (carritos.get(i).getCodigo() == carrito.getCodigo()) {
@@ -54,5 +59,15 @@ public class CarritoDAOMemoria implements CarritoDAO {
     @Override
     public List<Carrito> listarTodos() {
         return carritos;
+    }
+
+    @Override
+    public List<Carrito> listarPorUsuario(String nombreDeUsuario) {
+        return List.of();
+    }
+
+    @Override
+    public void eliminarPorUsuario(String nombreDeUsuario) {
+
     }
 }

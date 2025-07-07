@@ -10,10 +10,16 @@ public interface CarritoDAO {
 
     Carrito buscarPorCodigo(int codigo);
 
+    void limpiar(Carrito carrito);
+
     void actualizar(Carrito carrito);
 
     void eliminar(int codigo);
 
-    List<Carrito> listarTodos();
+    List<Carrito> listarTodos(); //solo para admin
+
+    List<Carrito> listarPorUsuario(String nombreDeUsuario);
+
+    void eliminarPorUsuario(String nombreDeUsuario);
 
 }
