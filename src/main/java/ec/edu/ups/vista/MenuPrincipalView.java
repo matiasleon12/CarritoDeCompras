@@ -55,7 +55,7 @@ public class MenuPrincipalView extends JFrame {
 
 
         menuItemCuentaUsuario = new JMenuItem("Información de Cuenta");
-        menuItemListarUsuarios = new JMenuItem("Listar Usuarios"); //para admin
+        menuItemListarUsuarios = new JMenuItem("Listar Usuarios");
 
 
         menuItemSalir = new JMenuItem("Salir");
@@ -82,22 +82,22 @@ public class MenuPrincipalView extends JFrame {
         menuSalirLogin.add(menuItemSalir);
         menuSalirLogin.add(menuItemSalirALogin);
 
-        //idioma por defecto
+
         mensInter = new MensajeInternacionalizacionHandler("es", "EC");
         actualizarTextos();
 
         setJMenuBar(menuBar);
         setContentPane(jDesktopPane);
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        setTitle("Sistema de Carrito de Compras En Línea");
+        setTitle("Sistema de Carrito de Compras");
         setExtendedState(JFrame.MAXIMIZED_BOTH);
     }
 
-    //Nuevo constructor que recibe el handler ya inicializado
-    public MenuPrincipalView(MensajeInternacionalizacionHandler mih) {
-        this();               //llama al constructor por defecto
-        this.mensInter = mih;       //asigna el handler
-        actualizarTextos();   //pinta los textos con el idioma adecuado
+
+    public MenuPrincipalView(MensajeInternacionalizacionHandler mensInter) {
+        this();
+        this.mensInter = mensInter;
+        actualizarTextos();
     }
 
     public void actualizarTextos() {
@@ -107,18 +107,15 @@ public class MenuPrincipalView extends JFrame {
         menuSesion.setText(mensInter.get("menu.sesion"));
         menuSalirLogin .setText(mensInter.get("menu.salir.opciones"));
 
-        //items del producto
         menuItemCrearProducto.setText(mensInter.get("menu.producto.crear"));
         menuItemEliminarProducto.setText(mensInter.get("menu.producto.eliminar"));
         menuItemActualizarProducto.setText(mensInter.get("menu.producto.actualizar"));
         menuItemBuscarProducto .setText(mensInter.get("menu.producto.buscar"));
 
-        //items del carrito
         menuItemCrearCarrito.setText(mensInter.get("menu.carrito.crear"));
         menuItemListarMisCarritos.setText(mensInter.get("menu.carrito.listarMisCarritos"));
         menuItemlistarCarritosPorUsuario.setText(mensInter.get("menu.carrito.listarPorUsuario"));
 
-        //items de Cuenta
         menuItemCuentaUsuario .setText(mensInter.get("menu.cuenta.usuario"));
         menuItemListarUsuarios.setText(mensInter.get("menu.cuenta.admin"));
 
@@ -131,7 +128,7 @@ public class MenuPrincipalView extends JFrame {
         getMenuItemBuscarProducto().setEnabled(false);
         getMenuItemActualizarProducto().setEnabled(false);
         getMenuItemEliminarProducto().setEnabled(false);
-        getMenuItemListarCarritosPorUsuario().setEnabled(false); //usuario no puede listar los carritos de demas usuarios
+        getMenuItemListarCarritosPorUsuario().setEnabled(false);
         getMenuItemListarUsuarios().setEnabled(false);
     }
 
@@ -145,7 +142,6 @@ public class MenuPrincipalView extends JFrame {
         JOptionPane.showMessageDialog(this, mensaje);
     }
 
-    //GETTERS Y SETTERS
     public void setMenuBar(JMenuBar menuBar) {
         this.menuBar = menuBar;
     }

@@ -32,8 +32,8 @@ public class   ProductoAnadirView extends JInternalFrame {
         //setLocationRelativeTo(null);
         //setVisible(true);
         //pack();
-        setIconoEscalado(btnAceptar, "imagenes/icono_limpiar.png", 25, 25);
-        setIconoEscalado(btnLimpiar, "imagenes/aceptar.png", 25, 25);
+        setIconoEscalado(btnAceptar, "imagenes/aceptar.png", 25, 25);
+        setIconoEscalado(btnLimpiar, "imagenes/icono_limpiar.png", 25, 25);
 
 
         btnLimpiar.addActionListener(new ActionListener() {

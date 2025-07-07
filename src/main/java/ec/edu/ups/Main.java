@@ -24,7 +24,7 @@ public class Main {
     public static void main(String[] args) {
         EventQueue.invokeLater(new Runnable() {
             public void run() {
-                //iniciar sesion
+
                 UsuarioDAO usuarioDAO = new UsuarioDAOMemoria();
                 CarritoDAO carritoDAO = new CarritoDAOMemoria();
 
@@ -39,8 +39,7 @@ public class Main {
                     public void windowClosed(WindowEvent e){
                         Usuario usuarioAuntenticado = usuarioController.getUsuarioAutenticado();
                         if(usuarioAuntenticado != null){
-                            MenuPrincipalView principalView = usuarioController.getPrincipalView();  //ya tiene listeners
-
+                            MenuPrincipalView principalView = usuarioController.getPrincipalView();
 
                             MensajeInternacionalizacionHandler mensInter = usuarioController.getMensInter();
 
@@ -58,12 +57,10 @@ public class Main {
 
                             ProductoDAO productoDAO = new ProductoDAOMemoria();
 
-                            //vista de registrar productos con el mih
                             ProductoAnadirView productoAnadirView = new ProductoAnadirView();
                             productoAnadirView.setMensajeHandler(mensInter);
                             principalView.getjDesktopPane().add(productoAnadirView);
 
-                            //vista de listar productos
                             ProductoListaView productoListaView = new ProductoListaView();
                             productoListaView.setMensajeHandler(mensInter);
                             principalView.getjDesktopPane().add(productoListaView);
@@ -85,7 +82,6 @@ public class Main {
                             carritoController.vincularListarCarritos(listarCarritosView, principalView.getjDesktopPane());
                             carritoController.configurarEventosListarCarritoAdmin(listarCAdmin, principalView.getjDesktopPane());
 
-                            //ocultar vistas cuando ingresa un usuario
                             if(usuarioAuntenticado.getRol().equals(Rol.USUARIO)) {
                                 principalView.deshabilitarMenusAdministrador();
                             } else principalView.deshabilitarMenusUsuario();
@@ -93,7 +89,6 @@ public class Main {
                             String texto = mensInter.get("mensaje.bienvenido") + ": " + usuarioAuntenticado.getUsername();
                             principalView.mostrarMensaje(texto);
 
-                            // menú cuenta usuario
                             principalView.getMenuItemCuentaUsuario().addActionListener(new ActionListener() {
                                 @Override
                                 public void actionPerformed(ActionEvent e) {
@@ -101,7 +96,6 @@ public class Main {
                                 }
                             });
 
-                            // menu crear producto
                             principalView.getMenuItemCrearProducto().addActionListener(new ActionListener() {
                                 @Override
                                 public void actionPerformed(ActionEvent e) {
@@ -111,7 +105,6 @@ public class Main {
                                 }
                             });
 
-                            // menu buscar producto
                             principalView.getMenuItemBuscarProducto().addActionListener(new ActionListener() {
                                 @Override
                                 public void actionPerformed(ActionEvent e) {
@@ -120,7 +113,7 @@ public class Main {
                                     }
                                 }
                             });
-                            // menu eliminar produc
+
                             principalView.getMenuItemEliminarProducto().addActionListener(new ActionListener() {
                                 @Override
                                 public void actionPerformed(ActionEvent e) {
@@ -130,7 +123,6 @@ public class Main {
                                 }
                             });
 
-                            // menu modificar producto
                             principalView.getMenuItemActualizarProducto().addActionListener(new ActionListener() {
                                 @Override
                                 public void actionPerformed(ActionEvent e) {

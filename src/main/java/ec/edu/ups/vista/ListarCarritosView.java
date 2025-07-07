@@ -18,7 +18,6 @@ public class ListarCarritosView extends JInternalFrame {
     private JLabel tituloListaC;
     private DefaultTableModel modelo;
 
-    // Formateador de fecha
     private static final SimpleDateFormat SDF =
             new SimpleDateFormat("dd/MM/yyyy");
 
