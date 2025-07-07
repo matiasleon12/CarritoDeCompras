@@ -1,5 +1,12 @@
 # 🛒 Proyecto de Ejemplo - Carrito de Compras
 
+- Estudiante: Matias Leon
+- Docente: Ing. Gabriel León
+- Carrera: Ingeniería en Ciencias de la Computación
+
+- Enlace del video:
+
+
 Este proyecto fue desarrollado como parte del **período 66** de la asignatura **Programación Orientada a Objetos** en la Universidad Politécnica Salesiana.  
 Su objetivo principal es demostrar el uso de **patrones de diseño** aplicados a una aplicación Java con interfaz gráfica construida con **Swing**.
 
@@ -45,4 +52,3 @@ Implementar un sistema educativo que simula un **carrito de compras**, utilizand
 ## © Créditos
 
 Desarrollado como parte de la práctica académica en **Programación Orientada a Objetos – Periodo 66**.
-
