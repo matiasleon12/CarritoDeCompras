@@ -4,7 +4,7 @@
 - Docente: Ing. Gabriel León
 - Carrera: Ingeniería en Ciencias de la Computación
 
-- Enlace del video:
+- Enlace del video: https://youtu.be/4F9JgJocXwI 
 
 
 Este proyecto fue desarrollado como parte del **período 66** de la asignatura **Programación Orientada a Objetos** en la Universidad Politécnica Salesiana.  
