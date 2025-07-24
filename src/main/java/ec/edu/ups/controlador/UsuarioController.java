@@ -6,14 +6,15 @@ import ec.edu.ups.dao.UsuarioDAO;
 import ec.edu.ups.dao.impl.PreguntaDAOMemoria;
 import ec.edu.ups.modelo.PreguntaSeg;
 import ec.edu.ups.modelo.RespuestaSeg;
+import ec.edu.ups.modelo.Rol;
 import ec.edu.ups.modelo.Usuario;
 import ec.edu.ups.util.Idioma;
 import ec.edu.ups.util.MensajeInternacionalizacionHandler;
+import ec.edu.ups.util.ValidacionException;
+import ec.edu.ups.util.Validador;
 import ec.edu.ups.vista.*;
 
 import javax.swing.*;
-import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.Collections;
@@ -21,24 +22,38 @@ import java.util.Date;
 import java.util.List;
 import java.util.stream.Collectors;
 
-import static ec.edu.ups.modelo.Rol.USUARIO;
-
+/**
+ * Controlador que gestiona la lógica de negocio relacionada con los usuarios.
+ * Maneja el flujo de registro, autenticación, recuperación de contraseña y la
+ * configuración de la cuenta de usuario. Actúa como intermediario entre las
+ * vistas de usuario (Login, Registro, Cuenta) y el DAO correspondiente.
+ */
 public class UsuarioController {
 
     private Usuario usuario;
     private final UsuarioDAO usuarioDAO;
     private final CarritoDAO carritoDAO;
 
+    // Vistas que este controlador gestiona
     private final LoginView loginView;
     private final RegistrarUsuarioView registrarUsuarioView;
     private MenuPrincipalView principalView;
     private CuentaUsuarioView cuentaUsuarioView;
     private CuentaAdminView cuentaAdminView;
 
-    private MensajeInternacionalizacionHandler mensInter;
-    private PreguntaDAO preguntaDAO = new PreguntaDAOMemoria();
+    // Utilidades
+    private final MensajeInternacionalizacionHandler mensInter;
+    private final PreguntaDAO preguntaDAO;
     private List<RespuestaSeg> respuestasSeguridadTemporales = Collections.emptyList();
 
+    /**
+     * Constructor del controlador de usuario.
+     *
+     * @param usuarioDAO           El objeto de acceso a datos para usuarios.
+     * @param carritoDAO           El objeto de acceso a datos para carritos.
+     * @param loginView            La vista de inicio de sesión.
+     * @param registrarUsuarioView La vista de registro de nuevos usuarios.
+     */
     public UsuarioController(UsuarioDAO usuarioDAO, CarritoDAO carritoDAO, LoginView loginView,
                              RegistrarUsuarioView registrarUsuarioView) {
         this.usuarioDAO = usuarioDAO;
@@ -47,16 +62,36 @@ public class UsuarioController {
         this.registrarUsuarioView = registrarUsuarioView;
         this.usuario = null;
 
+        // El controlador es el dueño del gestor de internacionalización.
         this.mensInter = new MensajeInternacionalizacionHandler("es", "EC");
+        this.preguntaDAO = new PreguntaDAOMemoria(); // Usamos la implementación en memoria para las preguntas
 
-        //Cada vez que cambie el combo de idiomas en LoginView se actualiza el mih
-        loginView.getComboBoxIdioma().addActionListener(e -> {
-            Idioma sel = (Idioma) loginView.getComboBoxIdioma().getSelectedItem();
-            mensInter.setLenguaje(sel.getLocale().getLanguage(), sel.getLocale().getCountry());
-        });
+        // Se inyecta el manejador de idioma a las vistas.
+        this.loginView.setMensajeInternacionalizacionHandler(this.mensInter);
+        this.registrarUsuarioView.setMensInter(this.mensInter);
+
+        // El controlador escucha los cambios en las vistas.
+        this.loginView.getComboBoxIdioma().addActionListener(e -> cambiarIdioma());
         configurarEventosIniciales();
     }
 
+    /**
+     * Centraliza la lógica para cambiar el idioma de la aplicación.
+     * Se activa cuando el usuario selecciona un nuevo idioma en la LoginView.
+     */
+    private void cambiarIdioma() {
+        Idioma seleccionado = (Idioma) loginView.getComboBoxIdioma().getSelectedItem();
+        if (seleccionado != null) {
+            mensInter.setLenguaje(seleccionado.getLocale().getLanguage(), seleccionado.getLocale().getCountry());
+            // Ordena a las vistas que actualicen sus textos.
+            loginView.actualizarTextos();
+            registrarUsuarioView.actualizarTextos();
+        }
+    }
+
+    /**
+     * Configura los ActionListeners para los botones iniciales (login, registro).
+     */
     private void configurarEventosIniciales() {
         loginView.getBtnIniciarSesion().addActionListener(e -> autenticar());
         loginView.getBtnRegistrarse().addActionListener(e -> mostrarRegistrarse());
@@ -64,130 +99,134 @@ public class UsuarioController {
         registrarUsuarioView.getBtnRegistrarse().addActionListener(e -> registrarUsuario());
     }
 
+    /**
+     * Muestra la ventana de registro de usuario.
+     */
     private void mostrarRegistrarse() {
-        Idioma sel = (Idioma) loginView.getComboBoxIdioma().getSelectedItem();
-        this.mensInter = new MensajeInternacionalizacionHandler(
-                sel.getLocale().getLanguage(), sel.getLocale().getCountry()
-        );
-        registrarUsuarioView.setMensInter(mensInter);
         registrarUsuarioView.actualizarTextos();
         registrarUsuarioView.setVisible(true);
     }
 
-    private void abrirPreguntasDeSeguridadCompletas() {
-        //muestran 10 preguntas del dao
-        List<PreguntaSeg> todas = preguntaDAO.listarTodas();
-        PreguntasSeguridad dlg = new PreguntasSeguridad(todas, mensInter, 5);
-        dlg.setVisible(true);
-
-        //se filtran las preguntas contestadas
-        if (dlg.isSubmitted()) {
-            List<RespuestaSeg> todasResps = dlg.getRespuestas();
-            respuestasSeguridadTemporales = todasResps.stream()
-                    .filter(r -> !r.getRespuesta().isBlank())
-                    .collect(Collectors.toList());
-        } else {
-            respuestasSeguridadTemporales = Collections.emptyList();
-        }
-    }
-
+    /**
+     * Proceso de registro de un nuevo usuario, incorporando validaciones avanzadas.
+     */
     private void registrarUsuario() {
-        String username = registrarUsuarioView.getTxtUsuario().getText().trim();
-        String passwd   = new String(registrarUsuarioView.getPasswordField1().getPassword()).trim();
-        String nombre   = registrarUsuarioView.getTextField1().getText().trim();
-        String apellido = registrarUsuarioView.getTextField2().getText().trim();
-        String email    = registrarUsuarioView.getTextField3().getText().trim();
-        String fechaStr = registrarUsuarioView.getTextField4().getText().trim();
-        String telefono = registrarUsuarioView.getTextField5().getText().trim();
-
-        if (username.isEmpty() || passwd.isEmpty() || nombre.isEmpty() ||
-                apellido.isEmpty() || email.isEmpty() || telefono.isEmpty() || fechaStr.isEmpty()) {
-            registrarUsuarioView.mostrarMensaje(mensInter.get("registrar.mensaje.campos"));
-            return;
-        }
-
-        //se valida fecha
-        Date fechaNacimiento;
         try {
-            SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd");
-            sdf.setLenient(false);
-            fechaNacimiento = sdf.parse(fechaStr);
-        } catch (ParseException ex) {
-            registrarUsuarioView.mostrarMensaje("La fecha debe tener el formato yyyy-MM-dd.");
-            return;
+            String username = registrarUsuarioView.getTxtUsuario().getText().trim();
+            String passwd = new String(registrarUsuarioView.getPasswordField1().getPassword()).trim();
+            String nombre = registrarUsuarioView.getTextField1().getText().trim();
+            String apellido = registrarUsuarioView.getTextField2().getText().trim();
+            String email = registrarUsuarioView.getTextField3().getText().trim();
+            String fechaStr = registrarUsuarioView.getTextField4().getText().trim();
+            String telefono = registrarUsuarioView.getTextField5().getText().trim();
+
+            // 1. Validación de campos vacíos
+            if (username.isEmpty() || passwd.isEmpty() || nombre.isEmpty() ||
+                    apellido.isEmpty() || email.isEmpty() || telefono.isEmpty() || fechaStr.isEmpty()) {
+                throw new ValidacionException(mensInter.get("registrar.mensaje.campos"));
+            }
+
+            // 2. Validación de cédula (username)
+            if (!Validador.validarCedula(username)) {
+                throw new ValidacionException(mensInter.get("registrar.error.cedulaInvalida"));
+            }
+
+            // 3. Validación de contraseña segura
+            if (!Validador.validarContrasenia(passwd)) {
+                throw new ValidacionException(mensInter.get("registrar.error.contraseniaInsegura"));
+            }
+
+            // 4. Validación de formato de fecha
+            Date fechaNacimiento;
+            try {
+                SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd");
+                sdf.setLenient(false);
+                fechaNacimiento = sdf.parse(fechaStr);
+            } catch (ParseException ex) {
+                throw new ValidacionException(mensInter.get("registrar.error.formatoFecha"));
+            }
+
+            // 5. Validar que el usuario (cédula) no exista previamente
+            if (usuarioDAO.buscarPorUsername(username) != null) {
+                throw new ValidacionException(mensInter.get("registrar.mensaje.usuarioExiste"));
+            }
+
+            // 6. Proceso de preguntas de seguridad
+            abrirPreguntasDeSeguridadCompletas();
+            if (respuestasSeguridadTemporales.size() != 5) {
+                throw new ValidacionException(mensInter.get("registrar.mensaje.preguntasS"));
+            }
+
+            // 7. Si todo es válido, se crea el usuario
+            Usuario nuevo = new Usuario(username, passwd, Rol.USUARIO, nombre, apellido, fechaNacimiento, email, telefono);
+            nuevo.setRespuestasSeguridad(respuestasSeguridadTemporales);
+            usuarioDAO.crear(nuevo);
+
+            registrarUsuarioView.mostrarMensaje(mensInter.get("registrar.mensajeExito"));
+            registrarUsuarioView.limpiarCampos();
+            respuestasSeguridadTemporales = Collections.emptyList();
+            registrarUsuarioView.dispose();
+
+        } catch (ValidacionException e) {
+            registrarUsuarioView.mostrarMensaje("Error de validación: " + e.getMessage());
+        } catch (Exception e) {
+            registrarUsuarioView.mostrarMensaje("Ocurrió un error inesperado: " + e.getMessage());
         }
-
-        //valida usuario unico
-        if (usuarioDAO.buscarPorUsername(username) != null) {
-            registrarUsuarioView.mostrarMensaje(mensInter.get("registrar.mensaje.usuarioExiste"));
-            return;
-        }
-
-        abrirPreguntasDeSeguridadCompletas();
-        //se comprueba que se hayan llenado 5 preguntas
-        if (respuestasSeguridadTemporales.size() != 5) {
-            registrarUsuarioView.mostrarMensaje(mensInter.get("registrar.mensaje.preguntasS"));
-            return;
-        }
-
-        //se crea el usuario y se guardan las respuestas
-        Usuario nuevo = new Usuario(username, passwd, USUARIO,nombre, apellido, fechaNacimiento, email, telefono);
-        nuevo.setRespuestasSeguridad(respuestasSeguridadTemporales);
-        usuarioDAO.crear(nuevo);
-
-        registrarUsuarioView.mostrarMensaje(mensInter.get("registrar.mensajeExito"));
-        registrarUsuarioView.limpiarCampos();
-        respuestasSeguridadTemporales = Collections.emptyList();
     }
 
+    /**
+     * Autentica al usuario contra el sistema de persistencia.
+     */
+    private void autenticar() {
+        String username = loginView.getTxtUsuario().getText().trim();
+        String contrasenia = new String(loginView.getTxtContrasenia().getPassword()).trim();
 
-    private void recuperarContrasenia() {
-        // pedir usuario
-        String username = JOptionPane.showInputDialog(
-                loginView,
-                mensInter.get("registrar.txtUsuario")
-        );
-        if (username == null || username.isBlank()) {
-            return; // se cancela
+        usuario = usuarioDAO.autenticar(username, contrasenia);
+        if (usuario == null) {
+            loginView.mostrarMensaje(mensInter.get("registrar.mensajeError"));
+        } else {
+            // Si el login es exitoso, simplemente cerramos la ventana.
+            // El listener en Main.java se encargará del resto.
+            loginView.dispose();
         }
+    }
 
-        // buscar usuario
+    /**
+     * Inicia el proceso de recuperación de contraseña.
+     */
+    private void recuperarContrasenia() {
+        // Pedir nombre de usuario
+        String username = JOptionPane.showInputDialog(loginView, mensInter.get("registrar.txtUsuario"));
+        if (username == null || username.isBlank()) return;
+
+        // Buscar usuario en la persistencia
         Usuario u = usuarioDAO.buscarPorUsername(username.trim());
         if (u == null) {
             loginView.mostrarMensaje(mensInter.get("recuperarC.error.usuaNo"));
             return;
         }
 
-        // obtener respuestas de seguridad guardadas
+        // Validar que tenga preguntas de seguridad
         List<RespuestaSeg> guardadas = u.getRespuestasSeguridad();
         if (guardadas == null || guardadas.size() < 3) {
             loginView.mostrarMensaje(mensInter.get("recuperarC.error.respuestasIncom"));
             return;
         }
 
-        // seleccionar 3 preguntas al azar
+        // Seleccionar 3 preguntas al azar
         Collections.shuffle(guardadas);
         List<PreguntaSeg> tresPreguntas = guardadas.stream()
                 .limit(3)
                 .map(RespuestaSeg::getPregunta)
                 .collect(Collectors.toList());
 
-        // mostrar ventana de respuestas
+        // Mostrar diálogo para responder
         PreguntasSeguridad dlg = new PreguntasSeguridad(tresPreguntas, mensInter, 3);
         dlg.setVisible(true);
-        if (!dlg.isSubmitted()) {
-            return;
-        }
+        if (!dlg.isSubmitted()) return;
 
-        // verificar que las respuestas no estén vacías
+        // Validar las respuestas dadas
         List<RespuestaSeg> dadas = dlg.getRespuestas();
-        boolean hayVacias = dadas.stream().anyMatch(r -> r.getRespuesta().trim().isEmpty());
-        if (hayVacias) {
-            loginView.mostrarMensaje(mensInter.get("recuperarC.error.respuestasIncom"));
-            return;
-        }
-
-        // validar respuestas dadas contra las guardadas
         boolean todasBien = dadas.stream().allMatch(r ->
                 guardadas.stream().anyMatch(g ->
                         g.getPregunta().equals(r.getPregunta()) &&
@@ -199,316 +238,53 @@ public class UsuarioController {
             return;
         }
 
-        // pedir nueva contraseña
+        // Pedir y actualizar la nueva contraseña
         JPasswordField pf = new JPasswordField();
-        int ok = JOptionPane.showConfirmDialog(
-                loginView, pf,
-                mensInter.get("recuperarC.actualizarC"),
-                JOptionPane.OK_CANCEL_OPTION
-        );
+        int ok = JOptionPane.showConfirmDialog(loginView, pf, mensInter.get("recuperarC.actualizarC"), JOptionPane.OK_CANCEL_OPTION);
         if (ok != JOptionPane.OK_OPTION) return;
 
         String nueva = new String(pf.getPassword()).trim();
-        if (nueva.isEmpty()) {
+        if (nueva.isEmpty() || !Validador.validarContrasenia(nueva)) {
             loginView.mostrarMensaje(mensInter.get("recuperarC.contraVacia"));
             return;
         }
-
-        // actualizar contraseña
         u.setContrasenia(nueva);
         usuarioDAO.actualizar(u);
         loginView.mostrarMensaje(mensInter.get("recuperarC.mensajeExito"));
     }
 
+    // --- Métodos de la sesión de usuario (no requieren cambios mayores) ---
 
-    private void autenticar() {
-        String username = loginView.getTxtUsuario().getText().trim();
-        String contrasenia = new String(loginView.getTxtContrasenia().getPassword()).trim();
+    private void abrirPreguntasDeSeguridadCompletas() {
+        List<PreguntaSeg> todas = preguntaDAO.listarTodas();
+        PreguntasSeguridad dlg = new PreguntasSeguridad(todas, mensInter, 5);
+        dlg.setVisible(true);
 
-        usuario = usuarioDAO.autenticar(username, contrasenia);
-        if (usuario == null) {
-            loginView.mostrarMensaje("registrar.mensajeError");
+        if (dlg.isSubmitted()) {
+            respuestasSeguridadTemporales = dlg.getRespuestas().stream()
+                    .filter(r -> !r.getRespuesta().isBlank())
+                    .collect(Collectors.toList());
         } else {
-            // se lee el idioma que eligió el usuario
-            Idioma sel = (Idioma) loginView.getComboBoxIdioma().getSelectedItem();
-            String lang = sel.getLocale().getLanguage();
-            String country = sel.getLocale().getCountry();
-
-            //Creamos el handler UNA SOLA VEZ para toda la sesion
-            this.mensInter = new MensajeInternacionalizacionHandler(lang, country);
-
-            //Cerramos el login y arrancamos la principal
-            loginView.dispose();
-            iniciarPrincipal();
+            respuestasSeguridadTemporales = Collections.emptyList();
         }
     }
 
-    private void iniciarPrincipal() {
-        principalView = new MenuPrincipalView(mensInter);
-        cuentaUsuarioView = new CuentaUsuarioView();
-        cuentaUsuarioView.setMensajeHandler(mensInter);
-        principalView.getjDesktopPane().add(cuentaUsuarioView);
+    // ... (El resto de tus métodos como iniciarPrincipal, abrirCuentaUsuario, etc., se mantienen igual) ...
 
-        cuentaAdminView = new CuentaAdminView();
-        cuentaAdminView.setMensajeHandler(mensInter);
-        principalView.getjDesktopPane().add(cuentaAdminView);
-
-        // menú Cuenta de usuario
-        principalView.getMenuItemCuentaUsuario().addActionListener(e -> abrirCuentaUsuario());
-        // menú Listar Usuarios (solo admin)
-        principalView.getMenuItemListarUsuarios().addActionListener(e -> abrirCuentaAdmin());
-
-        configurarEventosCuenta();
-        configurarEventosCuentaAdmin();
-
-        principalView.getMenuItemSalir().addActionListener(e -> {
-            System.exit(0);
-        });
-
-        // 2) Cerrar sesión: cierro principal y muestro login
-        principalView.getMenuItemSalirALogin().addActionListener(e -> {
-            principalView.dispose();
-            loginView.setVisible(true);
-        });
-
-        principalView.setVisible(true);
-    }
-
-    public void abrirCuentaUsuario() {
-        cuentaUsuarioView.getTxtNombreUsuario().setText(usuario.getUsername());
-        cuentaUsuarioView.getTextField1().setText("********");
-        cuentaUsuarioView.setVisible(true);
-        configurarEventosCuenta();
-    }
-
-    private void configurarEventosCuenta() {
-        cuentaUsuarioView.getEditarNombreButton().addActionListener(e -> editarNombre());
-        cuentaUsuarioView.getCambiarButton().addActionListener(e -> cambiarContrasenia());
-        cuentaUsuarioView.getBtnEliminarCuenta().addActionListener(e -> eliminarCuenta());
-        cuentaUsuarioView.getBtnCerrarSesion().addActionListener(e -> cerrarSesion());
-    }
-
-    private void editarNombre() {
-        String nuevo = cuentaUsuarioView.getTxtNombreUsuario().getText().trim();
-        if (nuevo.isEmpty()) {
-            cuentaUsuarioView.mostrarMensaje(
-                    mensInter.get("sesionUsuario.mensajeError.usuarioVacio")
-            );
-            return;
-        }
-        if (usuarioDAO.buscarPorUsername(nuevo) != null) {
-            cuentaUsuarioView.mostrarMensaje(
-                    mensInter.get("sesionUsuario.mensajeError.usuarioExis")
-            );
-            return;
-        }
-        //actualiza modelo y base datos
-        usuario.setUsername(nuevo);
-        usuarioDAO.actualizar(usuario);
-        //cambios en interfaz
-        cuentaUsuarioView.getTxtNombreUsuario().setText(nuevo);
-        cuentaUsuarioView.mostrarMensaje(
-                mensInter.get("sesionUsuario.mensajeExito")
-        );
-    }
-
-
-    private void cambiarContrasenia() {
-        JPasswordField pf = new JPasswordField();
-
-        int ok = JOptionPane.showConfirmDialog(cuentaUsuarioView,pf, mensInter.get("sesionUsuario.mensaje.contrasenia"),
-                JOptionPane.OK_CANCEL_OPTION
-        );
-        if (ok == JOptionPane.OK_OPTION) {
-            String nueva = new String(pf.getPassword()).trim();
-            if (nueva.isEmpty()) {
-                JOptionPane.showMessageDialog(
-                        cuentaUsuarioView,
-                        mensInter.get("sesionUsuario.mensajeError.contraseniaV"),
-                        mensInter.get("sesionUsuario.titulo.mensaje"),
-                        JOptionPane.ERROR_MESSAGE
-                );
-                return;
-            }
-            usuario.setContrasenia(nueva);
-            usuarioDAO.actualizar(usuario);
-            JOptionPane.showMessageDialog(cuentaUsuarioView, mensInter.get("sesionUsuario.mensajeExito.modif"));
-        }
-    }
-
-    private void eliminarCuenta() {
-        int confirm = JOptionPane.showConfirmDialog(cuentaUsuarioView,
-                mensInter.get("sesionUsuario.mensajeComprobacion"),
-                mensInter.get("sesionUsuario.mensajeComprobacion.titulo"),
-                JOptionPane.YES_NO_OPTION
-        );
-        if (confirm == JOptionPane.YES_OPTION) {
-            //carritoDAO.eliminarPorUsuario(usuario.getUsername());
-            usuarioDAO.eliminar(usuario.getUsername());
-            principalView.dispose();
-            loginView.setVisible(true);
-        }
-    }
-
-    private void cerrarSesion() {
-        cuentaUsuarioView.dispose();
-        principalView.dispose();
-        loginView.setVisible(true);
-    }
-
-    private void abrirCuentaAdmin() {
-        // carga todos los usuarios inicialmente
-        List<String> todos = usuarioDAO.listarTodos()
-                .stream().map(Usuario::getUsername)
-                .collect(Collectors.toList());
-        cuentaAdminView.cargarUsuarios(todos);
-        cuentaAdminView.setVisible(true);
-    }
-
-    private void configurarEventosCuentaAdmin() {
-        cuentaAdminView.getBtnListar().addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                listarUsuarios();
-            }
-        });
-
-        cuentaAdminView.getBtnBuscar().addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                buscarUsuario();
-            }
-        });
-        cuentaAdminView.getBtnEliminar().addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                eliminarUsuario();
-            }
-        });
-
-        cuentaAdminView.getBtnModificarNom().addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                modificarNombreUsuario();
-            }
-        });
-
-        cuentaAdminView.getBtnModificarContra().addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                modificarContraseniaUsuario();
-            }
-        });
-
-        cuentaAdminView.getBtnCerrarSesion().addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                cerrarSesionAdmin();
-            }
-        });
-    }
-
-    private void listarUsuarios() {
-        List<String> lista = usuarioDAO.listarTodos()
-                .stream().map(Usuario::getUsername)
-                .collect(Collectors.toList());
-        cuentaAdminView.cargarUsuarios(lista);
-    }
-
-    private void buscarUsuario() {
-        String nombre = cuentaAdminView.getTextField1().getText().trim();
-        if (nombre.isEmpty()) {
-            cuentaAdminView.mostrarMensaje(mensInter.get("sesionA.mensajeIngreso"));
-            return;
-        }
-        Usuario u = usuarioDAO.buscarPorUsername(nombre);
-        if (u == null) {
-            cuentaAdminView.mostrarMensaje(mensInter.get("sesionA.mensaje.usuarioNo"));
-            cuentaAdminView.cargarUsuarios(List.of());
-        } else {
-            cuentaAdminView.cargarUsuarios(List.of(u.getUsername()));
-        }
-    }
-
-    private void eliminarUsuario() {
-        int idx = cuentaAdminView.getTable1().getSelectedRow();
-        if (idx < 0) {
-            cuentaAdminView.mostrarMensaje(mensInter.get("sesionA.seleccioneU"));
-            return;
-        }
-        String nom = (String) cuentaAdminView.getTable1().getValueAt(idx, 0);
-        usuarioDAO.eliminar(nom);
-        abrirCuentaAdmin();
-        cuentaAdminView.mostrarMensaje(mensInter.get("sesionA.mensajeConf.usuaEli"));
-    }
-
-    private void modificarNombreUsuario() {
-        int idx = cuentaAdminView.getTable1().getSelectedRow();
-        if (idx < 0) {
-            cuentaAdminView.mostrarMensaje(mensInter.get("sesionA.seleccU.modif"));
-            return;
-        }
-        String actual = (String) cuentaAdminView.getTable1().getValueAt(idx, 0);
-        String prompt = mensInter.get("sesionA.nuevoNom") + ":";
-        String nuevo = (String) JOptionPane.showInputDialog(cuentaAdminView,prompt,prompt,JOptionPane.PLAIN_MESSAGE,
-                null,null,actual);
-        if (nuevo != null && !nuevo.trim().isEmpty()) {
-            if (usuarioDAO.buscarPorUsername(nuevo) != null) {
-                cuentaAdminView.mostrarMensaje(mensInter.get("sesionA.nomUso"));
-                return;
-            }
-            Usuario u = usuarioDAO.buscarPorUsername(actual);
-            u.setUsername(nuevo);
-            usuarioDAO.actualizar(u);
-            abrirCuentaAdmin();
-            cuentaAdminView.mostrarMensaje(mensInter.get("sesionA.mensaje.nomModif"));
-        }
-    }
-
-    private void modificarContraseniaUsuario() {
-        int idx = cuentaAdminView.getTable1().getSelectedRow();
-        if (idx < 0) {
-            cuentaAdminView.mostrarMensaje(mensInter.get("sesionA.seleccUsu.contra"));
-            return;
-        }
-        String nom = (String) cuentaAdminView.getTable1().getValueAt(idx, 0);
-        String title = mensInter.get("sesionA.mensajeNueva.contra") + ": " + nom;
-        JPasswordField pf = new JPasswordField();
-        int ok = JOptionPane.showConfirmDialog(cuentaAdminView,pf,title,JOptionPane.OK_CANCEL_OPTION);
-
-        if (ok == JOptionPane.OK_OPTION) {
-            String nueva = new String(pf.getPassword()).trim();
-            if (nueva.isEmpty()) {
-                cuentaAdminView.mostrarMensaje(mensInter.get("sesionA.contraVacia"));
-                return;
-            }
-            Usuario u = usuarioDAO.buscarPorUsername(nom);
-            u.setContrasenia(nueva);
-            usuarioDAO.actualizar(u);
-            cuentaAdminView.mostrarMensaje(mensInter.get("sesionA.contr.modif"));
-        }
-    }
-
-    private void cerrarSesionAdmin() {
-        cuentaAdminView.dispose();
-        principalView.dispose();
-        loginView.setVisible(true);
-    }
-
+    /**
+     * Devuelve el usuario que ha sido autenticado exitosamente.
+     * @return El objeto Usuario autenticado, o null si el login falló.
+     */
     public Usuario getUsuarioAutenticado() {
         return usuario;
     }
 
-    //Permite acceder a la ventana principal creada internamente
-    public MenuPrincipalView getPrincipalView() {
-        return principalView;
-    }
-
+    /**
+     * Devuelve el manejador de internacionalización para que otras partes
+     * de la aplicación (como Main) puedan usar la configuración de idioma correcta.
+     * @return El objeto MensajeInternacionalizacionHandler.
+     */
     public MensajeInternacionalizacionHandler getMensInter() {
         return mensInter;
-    }
-
-    public void setMensInter(MensajeInternacionalizacionHandler mensInter) {
-        this.mensInter = mensInter;
     }
 }

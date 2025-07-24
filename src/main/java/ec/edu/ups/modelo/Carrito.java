@@ -81,6 +81,20 @@ public class Carrito {
         this.usuario = usuario;
     }
 
+    public static void setContador(int contador) {
+        Carrito.contador = contador;
+    }
+
+    public void setFechaCreacion(GregorianCalendar fechaCreacion) {
+        this.fechaCreacion = fechaCreacion;
+    }
+
+    public void setItems(List<ItemCarrito> items) {
+        this.items = items;
+    }
+
+
+
     @Override
     public String toString() {
         return "Carrito{" +

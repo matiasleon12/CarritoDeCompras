@@ -2,8 +2,11 @@ package ec.edu.ups.modelo;
 
 import java.util.Date;
 import java.util.List;
+import java.io.Serializable;
 
-public class Usuario {
+public class Usuario implements Serializable{
+
+    private static final long serialVersionUID = 1L;
     private String username;
     private String contrasenia;
     private Rol rol;
@@ -65,6 +68,42 @@ public class Usuario {
 
     public void setRespuestasSeguridad(List<RespuestaSeg> respuestasSeguridad) {
         this.respuestasSeguridad = respuestasSeguridad;
+    }
+
+    public String getTelefono() {
+        return telefono;
+    }
+
+    public void setTelefono(String telefono) {
+        this.telefono = telefono;
+    }
+
+    public String getEmail() {
+        return email;
+    }
+
+    public void setEmail(String email) {
+        this.email = email;
+    }
+
+    public Date getFechaNacimiento() {
+        return fechaNacimiento;
+    }
+
+    public void setFechaNacimiento(Date fechaNacimiento) {
+        this.fechaNacimiento = fechaNacimiento;
+    }
+
+    public String getApellido() {
+        return apellido;
+    }
+
+    public void setApellido(String apellido) {
+        this.apellido = apellido;
+    }
+
+    public void setRol(Rol rol) {
+        this.rol = rol;
     }
 
     @Override

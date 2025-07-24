@@ -2,11 +2,16 @@ package ec.edu.ups.vista;
 
 import javax.swing.*;
 import java.awt.*;
-import java.awt.event.ActionListener;
 import java.util.Locale;
 import ec.edu.ups.util.*;
 
 public class LoginView extends JFrame {
+
+    // (El enum TipoAlmacenamiento y los componentes del panel no cambian)
+    public enum TipoAlmacenamiento {
+        MEMORIA, TEXTO, BINARIO
+    }
+
     private JPanel panelPrincipal;
     private JTextField txtUsuario;
     private JButton btnIniciarSesion;
@@ -18,6 +23,16 @@ public class LoginView extends JFrame {
     private JLabel lblIdioma;
     private JLabel lblIniciarSesion;
     private JButton btnRecuperarContra;
+    private JComboBox<TipoAlmacenamiento> cbxTipoAlmacenamiento;
+    private JLabel lblTipoAlmacenamiento;
+    private JButton btnSeleccionarRuta;
+    private JLabel lblRutaArchivos;
+    private String rutaAlmacenamiento = ".";
+    private JPanel panelAlmacenamiento;
+    private JTextField txtRutaArchivos;
+
+
+
 
     private MensajeInternacionalizacionHandler mensInter;
 
@@ -26,29 +41,65 @@ public class LoginView extends JFrame {
         setTitle("Iniciar Sesión");
         setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
         setLocationRelativeTo(null);
-        setSize(500, 400);
+        setSize(550, 450);
 
 
-
-        mensInter = new MensajeInternacionalizacionHandler("es", "EC");
 
         setIconoEscalado(btnIniciarSesion, "imagenes/imagen_inicioSesion.png", 25, 25);
         setIconoEscalado(btnRegistrarse, "imagenes/imagen_registrarse.png", 25, 25);
-        setIconoEscalado(btnRecuperarContra, "imagenes/imagen_guardarDatos.png", 25, 25);
 
-        idiomaComboBox(); //inicializamos el combo box con los idiomas que deseamos
 
-        actualizarTextos(); //asigna textos segun el idioma elegido
+        idiomaComboBox();
+        almacenamientoComboBox();
 
-        //cada vez que se seleccione otro idioma del combo
-        comboBoxIdioma.addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(java.awt.event.ActionEvent e) {
-                Idioma seleccionado = (Idioma) comboBoxIdioma.getSelectedItem();
-                mensInter.setLenguaje(seleccionado.getLocale().getLanguage(), seleccionado.getLocale().getCountry());
-                actualizarTextos();
-            }
+
+
+        btnSeleccionarRuta.addActionListener(e -> seleccionarRuta());
+
+        cbxTipoAlmacenamiento.addActionListener(e -> {
+            boolean habilitar = getTipoAlmacenamientoSeleccionado() != TipoAlmacenamiento.MEMORIA;
+            btnSeleccionarRuta.setEnabled(habilitar);
+            lblRutaArchivos.setEnabled(habilitar);
         });
+    }
+
+
+    /**
+     * Permite que el controlador establezca el manejador de internacionalización.
+     * @param mensInter El manejador de idioma que usará la vista.
+     */
+    public void setMensajeInternacionalizacionHandler(MensajeInternacionalizacionHandler mensInter) {
+        this.mensInter = mensInter;
+        actualizarTextos();
+    }
+
+    public void actualizarTextos() {
+
+        if (mensInter == null) return;
+
+        setTitle(mensInter.get("login.titulo"));
+        lblIniciarSesion.setText(mensInter.get("login.titulo"));
+        lblIdioma.setText(mensInter.get("login.txtIdioma"));
+        lblUsuario.setText(mensInter.get("login.txtUsuario"));
+        lblContrasenia.setText(mensInter.get("login.txtContrasenia"));
+        btnIniciarSesion.setText(mensInter.get("button.login"));
+        btnRegistrarse.setText(mensInter.get("button.registrar"));
+        btnRecuperarContra.setText(mensInter.get("button.olvido.contrasenia"));
+        lblTipoAlmacenamiento.setText(mensInter.get("Tipo de almacenamiento")); // Añadir esta clave a los properties
+        lblRutaArchivos.setText(mensInter.get("login.ruta")); // Añadir esta clave a los properties
+        btnSeleccionarRuta.setText(mensInter.get("login.btnRuta")); // Añadir esta clave a los properties
+    }
+
+
+    private void seleccionarRuta() {
+        JFileChooser fileChooser = new JFileChooser();
+        fileChooser.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
+        fileChooser.setDialogTitle("Seleccione la carpeta de almacenamiento");
+        int opcion = fileChooser.showOpenDialog(this);
+        if (opcion == JFileChooser.APPROVE_OPTION) {
+            rutaAlmacenamiento = fileChooser.getSelectedFile().getPath();
+            btnSeleccionarRuta.setToolTipText("Ruta actual: " + rutaAlmacenamiento);
+        }
     }
 
     private void setIconoEscalado(JButton boton, String ruta, int ancho, int alto) {
@@ -71,36 +122,31 @@ public class LoginView extends JFrame {
         comboBoxIdioma.setSelectedIndex(0);
     }
 
-    private void actualizarTextos() {
-        setTitle(mensInter.get("login.titulo"));
-        lblIniciarSesion.setText(mensInter.get("login.titulo"));
-        lblIdioma.setText(mensInter.get("login.txtIdioma"));
-        lblUsuario.setText(mensInter.get("login.txtUsuario"));
-        lblContrasenia.setText(mensInter.get("login.txtContrasenia"));
-        btnIniciarSesion.setText(mensInter.get("button.login"));
-        btnRegistrarse.setText(mensInter.get("button.registrar"));
-        btnRecuperarContra.setText(mensInter.get("button.olvido.contrasenia"));
+    private void almacenamientoComboBox() {
+        cbxTipoAlmacenamiento.setModel(new DefaultComboBoxModel<>(TipoAlmacenamiento.values()));
+        cbxTipoAlmacenamiento.setSelectedItem(TipoAlmacenamiento.MEMORIA);
+        btnSeleccionarRuta.setEnabled(false);
+        lblRutaArchivos.setEnabled(false);
     }
 
     public void mostrarMensaje(String mensaje) {
         JOptionPane.showMessageDialog(this, mensaje);
     }
 
-    //getters y setters
+    public TipoAlmacenamiento getTipoAlmacenamientoSeleccionado() {
+        return (TipoAlmacenamiento) cbxTipoAlmacenamiento.getSelectedItem();
+    }
+
+    public String getRutaAlmacenamiento() {
+        return rutaAlmacenamiento;
+    }
+
     public JPanel getPanelPrincipal() {
         return panelPrincipal;
     }
 
-    public void setPanelPrincipal(JPanel panelPrincipal) {
-        this.panelPrincipal = panelPrincipal;
-    }
-
     public JTextField getTxtUsuario() {
         return txtUsuario;
-    }
-
-    public void setTxtUsuario(JTextField txtUsuario) {
-        this.txtUsuario = txtUsuario;
     }
 
     public JButton getBtnIniciarSesion() {
