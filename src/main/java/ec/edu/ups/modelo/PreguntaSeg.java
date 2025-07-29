@@ -1,6 +1,6 @@
 package ec.edu.ups.modelo;
 
-public class PreguntaSeg {
+public class PreguntaSeg implements java.io.Serializable{
     private final String clave;
 
     /**

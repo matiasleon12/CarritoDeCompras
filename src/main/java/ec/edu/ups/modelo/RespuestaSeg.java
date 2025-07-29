@@ -1,7 +1,7 @@
 package ec.edu.ups.modelo;
 
-//guarda la respuesta que el usuario responde a una pregunta concreta
-public class RespuestaSeg {
+
+public class RespuestaSeg implements java.io.Serializable{
     private final PreguntaSeg pregunta;
     private final String respuesta;
 
