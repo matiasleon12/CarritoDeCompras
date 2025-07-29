@@ -7,6 +7,9 @@ import ec.edu.ups.dao.CarritoDAO;
 import ec.edu.ups.dao.ProductoDAO;
 import ec.edu.ups.dao.UsuarioDAO;
 import ec.edu.ups.dao.impl.*;
+import ec.edu.ups.dao.impl.archivo.CarritoDAOArchivoTexto;
+import ec.edu.ups.dao.impl.archivo.ProductoDAOArchivoTexto;
+import ec.edu.ups.dao.impl.archivo.UsuarioDAOArchivoTexto;
 import ec.edu.ups.dao.impl.binario.CarritoDAOArchivoBinario;
 import ec.edu.ups.dao.impl.binario.ProductoDAOArchivoBinario;
 import ec.edu.ups.dao.impl.binario.UsuarioDAOArchivoBinario;
@@ -55,15 +58,10 @@ public class Main {
 
                         switch (tipo) {
                             case TEXTO:
-                                // Descomenta estas líneas cuando tengas los DAO de texto con constructor de ruta
-                                // usuarioDAO = new UsuarioDAOArchivoTexto(ruta);
-                                // productoDAO = new ProductoDAOArchivoTexto(ruta);
-                                // carritoDAO = new CarritoDAOArchivoTexto(ruta);
-                                System.out.println("Usando DAOs de Archivo de Texto (Implementación pendiente)");
-                                // Fallback a memoria por ahora
-                                usuarioDAO = new UsuarioDAOMemoria();
-                                productoDAO = new ProductoDAOMemoria();
-                                carritoDAO = new CarritoDAOMemoria();
+                                usuarioDAO = new ec.edu.ups.dao.impl.archivo.UsuarioDAOArchivoTexto(ruta);
+                                productoDAO = new ec.edu.ups.dao.impl.archivo.ProductoDAOArchivoTexto(ruta);
+                                carritoDAO = new ec.edu.ups.dao.impl.archivo.CarritoDAOArchivoTexto(ruta, usuarioDAO, productoDAO);
+                                System.out.println("Usando DAOs de Archivo de Texto");
                                 break;
                             case BINARIO:
                                 usuarioDAO = new UsuarioDAOArchivoBinario(ruta);

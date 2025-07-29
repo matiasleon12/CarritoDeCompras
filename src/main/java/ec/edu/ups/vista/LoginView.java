@@ -58,8 +58,14 @@ public class LoginView extends JFrame {
 
         cbxTipoAlmacenamiento.addActionListener(e -> {
             boolean habilitar = getTipoAlmacenamientoSeleccionado() != TipoAlmacenamiento.MEMORIA;
+
             btnSeleccionarRuta.setEnabled(habilitar);
             lblRutaArchivos.setEnabled(habilitar);
+
+
+            btnSeleccionarRuta.setVisible(habilitar);
+            lblRutaArchivos.setVisible(habilitar);
+            txtRutaArchivos.setVisible(habilitar);
         });
     }
 
@@ -86,8 +92,8 @@ public class LoginView extends JFrame {
         btnRegistrarse.setText(mensInter.get("button.registrar"));
         btnRecuperarContra.setText(mensInter.get("button.olvido.contrasenia"));
         lblTipoAlmacenamiento.setText(mensInter.get("Tipo de almacenamiento")); // Añadir esta clave a los properties
-        lblRutaArchivos.setText(mensInter.get("login.ruta")); // Añadir esta clave a los properties
-        btnSeleccionarRuta.setText(mensInter.get("login.btnRuta")); // Añadir esta clave a los properties
+        lblRutaArchivos.setText(mensInter.get("Elegir ruta")); // Añadir esta clave a los properties
+        btnSeleccionarRuta.setText(mensInter.get("Seleccionar carpeta")); // Añadir esta clave a los properties
     }
 
 

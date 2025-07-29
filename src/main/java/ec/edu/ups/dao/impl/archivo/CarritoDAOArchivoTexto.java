@@ -1,33 +1,28 @@
 package ec.edu.ups.dao.impl.archivo;
 
 import ec.edu.ups.dao.CarritoDAO;
+import ec.edu.ups.dao.ProductoDAO;
+import ec.edu.ups.dao.UsuarioDAO;
 import ec.edu.ups.modelo.Carrito;
 import ec.edu.ups.modelo.ItemCarrito;
 import ec.edu.ups.modelo.Producto;
 import ec.edu.ups.modelo.Usuario;
-import ec.edu.ups.dao.UsuarioDAO; // Needed to link Carrito to Usuario
-import ec.edu.ups.dao.ProductoDAO; // Needed to link ItemCarrito to Producto
 
 import java.io.*;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
-import java.util.ArrayList;
-import java.util.Date;
-import java.util.GregorianCalendar;
-import java.util.List;
-import java.util.Iterator;
+import java.util.*;
 import java.util.stream.Collectors;
 
 public class CarritoDAOArchivoTexto implements CarritoDAO {
 
     private String filePath;
-    private final SimpleDateFormat SDF = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss"); // Format for date
-    private final UsuarioDAO usuarioDAO; // To find user by username
-    private final ProductoDAO productoDAO; // To find product by code
+    private final SimpleDateFormat SDF = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+    private final UsuarioDAO usuarioDAO;
+    private final ProductoDAO productoDAO;
 
-    // Constructor now takes DAOs to resolve relationships
-    public CarritoDAOArchivoTexto(String filePath, UsuarioDAO usuarioDAO, ProductoDAO productoDAO) {
-        this.filePath = filePath;
+    public CarritoDAOArchivoTexto(String rutaBase, UsuarioDAO usuarioDAO, ProductoDAO productoDAO) {
+        this.filePath = rutaBase + File.separator + "carritos.txt";
         this.usuarioDAO = usuarioDAO;
         this.productoDAO = productoDAO;
         File file = new File(filePath);
@@ -48,71 +43,48 @@ public class CarritoDAOArchivoTexto implements CarritoDAO {
         try (BufferedReader reader = new BufferedReader(new FileReader(filePath))) {
             String line;
             while ((line = reader.readLine()) != null) {
-                String[] parts = line.split("\\|"); // Use a delimiter not common in other fields, e.g., '|'
-
-                if (parts.length >= 3) { // Minimum parts: code, user, date, then items
-                    try {
-                        int codigo = Integer.parseInt(parts[0]);
-                        String username = parts[1];
-                        Date fechaCreacion = SDF.parse(parts[2]);
-
-                        Usuario usuario = usuarioDAO.buscarPorUsername(username); // Retrieve user object
-
+                String[] parts = line.split("\\|");
+                if (parts.length >= 3) {
+                    int codigo = Integer.parseInt(parts[0]);
+                    Usuario usuario = usuarioDAO.buscarPorUsername(parts[1]);
+                    Date fecha = SDF.parse(parts[2]);
+                    if (usuario != null) {
                         Carrito carrito = new Carrito();
                         carrito.setCodigo(codigo);
                         carrito.setUsuario(usuario);
-                        // Reconstruct GregorianCalendar
                         GregorianCalendar gc = new GregorianCalendar();
-                        gc.setTime(fechaCreacion);
+                        gc.setTime(fecha);
                         carrito.setFechaCreacion(gc);
-
-                        // Parse items if they exist
                         if (parts.length > 3 && !parts[3].isEmpty()) {
-                            String[] itemStrings = parts[3].split(","); // Items separated by comma
+                            String[] itemStrings = parts[3].split(",");
                             for (String itemStr : itemStrings) {
-                                String[] itemParts = itemStr.split(":"); // ProductCode:Quantity
+                                String[] itemParts = itemStr.split(":");
                                 if (itemParts.length == 2) {
-                                    int productCode = Integer.parseInt(itemParts[0]);
-                                    int quantity = Integer.parseInt(itemParts[1]);
-                                    Producto producto = productoDAO.buscarPorCodigo(productCode); // Retrieve product object
-                                    if (producto != null) {
-                                        // Directly add ItemCarrito to the list managed by Carrito
-                                        // (This avoids re-adding products and handles quantities correctly)
-                                        carrito.agregarProducto(producto, quantity);
+                                    Producto p = productoDAO.buscarPorCodigo(Integer.parseInt(itemParts[0]));
+                                    if (p != null) {
+                                        carrito.agregarProducto(p, Integer.parseInt(itemParts[1]));
                                     }
                                 }
                             }
                         }
                         carritos.add(carrito);
-                    } catch (NumberFormatException | ParseException e) {
-                        System.err.println("Error parsing carrito data: " + line + " -> " + e.getMessage());
                     }
                 }
             }
-        } catch (FileNotFoundException e) {
-            // File doesn't exist yet, return empty list
-        } catch (IOException e) {
-            System.err.println("Error reading carritos from file: " + e.getMessage());
+        } catch (IOException | ParseException | NumberFormatException e) {
+            // No es un error si está vacío
         }
         return carritos;
     }
 
     private void escribirTodos(List<Carrito> carritos) {
-        try (BufferedWriter writer = new BufferedWriter(new FileWriter(filePath))) {
+        try (BufferedWriter writer = new BufferedWriter(new FileWriter(filePath, false))) {
             for (Carrito c : carritos) {
-                StringBuilder line = new StringBuilder();
-                line.append(c.getCodigo()).append("|");
-                line.append(c.getUsuario() != null ? c.getUsuario().getUsername() : "null").append("|");
-                line.append(SDF.format(c.getFechaCreacion().getTime()));
-
-                // Serialize items
-                List<String> itemStrings = new ArrayList<>();
-                for (ItemCarrito item : c.obtenerItems()) {
-                    itemStrings.add(item.getProducto().getCodigo() + ":" + item.getCantidad());
-                }
-                line.append("|").append(String.join(",", itemStrings));
-
-                writer.write(line.toString());
+                String itemsStr = c.obtenerItems().stream()
+                        .map(item -> item.getProducto().getCodigo() + ":" + item.getCantidad())
+                        .collect(Collectors.joining(","));
+                String line = c.getCodigo() + "|" + c.getUsuario().getUsername() + "|" + SDF.format(c.getFechaCreacion().getTime()) + "|" + itemsStr;
+                writer.write(line);
                 writer.newLine();
             }
         } catch (IOException e) {
@@ -125,23 +97,6 @@ public class CarritoDAOArchivoTexto implements CarritoDAO {
         List<Carrito> carritos = leerTodos();
         carritos.add(carrito);
         escribirTodos(carritos);
-    }
-
-    @Override
-    public Carrito buscarPorCodigo(int codigo) {
-        return listarTodos().stream()
-                .filter(c -> c.getCodigo() == codigo)
-                .findFirst().orElse(null);
-    }
-
-    @Override
-    public void limpiar(Carrito carrito) {
-        // This method seems to be used internally by CarritoController
-        // to reset a carrito object, not necessarily persist a 'cleaned' state to storage.
-        // If it means removing all items from a stored carrito, you'd modify the carrito
-        // and then call actualizar.
-        // For now, assuming it's for in-memory object manipulation handled by controller.
-        // If it was for persistence, it would involve reading, modifying, and writing back.
     }
 
     @Override
@@ -159,20 +114,14 @@ public class CarritoDAOArchivoTexto implements CarritoDAO {
     @Override
     public void eliminar(int codigo) {
         List<Carrito> carritos = leerTodos();
-        boolean removed = carritos.removeIf(c -> c.getCodigo() == codigo);
-        if (removed) {
+        if (carritos.removeIf(c -> c.getCodigo() == codigo)) {
             escribirTodos(carritos);
         }
     }
 
     @Override
-    public List<Carrito> listarTodos() {
-        return leerTodos();
-    }
-
-    @Override
     public List<Carrito> listarPorUsuario(String nombreDeUsuario) {
-        return listarTodos().stream()
+        return leerTodos().stream()
                 .filter(c -> c.getUsuario() != null && c.getUsuario().getUsername().equals(nombreDeUsuario))
                 .collect(Collectors.toList());
     }
@@ -180,9 +129,23 @@ public class CarritoDAOArchivoTexto implements CarritoDAO {
     @Override
     public void eliminarPorUsuario(String nombreDeUsuario) {
         List<Carrito> carritos = leerTodos();
-        boolean removed = carritos.removeIf(c -> c.getUsuario() != null && c.getUsuario().getUsername().equals(nombreDeUsuario));
-        if (removed) {
+        if (carritos.removeIf(c -> c.getUsuario() != null && c.getUsuario().getUsername().equals(nombreDeUsuario))) {
             escribirTodos(carritos);
         }
+    }
+
+    @Override
+    public Carrito buscarPorCodigo(int codigo) {
+        return leerTodos().stream().filter(c -> c.getCodigo() == codigo).findFirst().orElse(null);
+    }
+
+    @Override
+    public void limpiar(Carrito carrito) {
+        actualizar(carrito);
+    }
+
+    @Override
+    public List<Carrito> listarTodos() {
+        return leerTodos();
     }
 }

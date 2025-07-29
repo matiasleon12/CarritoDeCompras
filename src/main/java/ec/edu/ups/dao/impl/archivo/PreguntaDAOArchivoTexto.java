@@ -17,8 +17,7 @@ public class PreguntaDAOArchivoTexto implements PreguntaDAO {
     private final String RUTA_ARCHIVO = "preguntas.txt";
 
     public PreguntaDAOArchivoTexto() {
-        // Se podría agregar lógica para crear el archivo si no existe
-        // con preguntas predeterminadas. Por ahora, se asume que existe.
+
     }
 
     @Override
@@ -48,12 +47,12 @@ public class PreguntaDAOArchivoTexto implements PreguntaDAO {
     public List<PreguntaSeg> seleccionarAleatorias(int n) {
         List<PreguntaSeg> todas = listarTodas();
         if (n >= todas.size()) {
-            return todas; // Si se piden más o igual al total, se devuelven todas
+            return todas;
         }
 
-        // Copiamos la lista para no modificar la original
+
         List<PreguntaSeg> temp = new ArrayList<>(todas);
-        Collections.shuffle(temp, new Random()); // Las mezclamos
+        Collections.shuffle(temp, new Random());
 
         // Devolvemos una sublista con los primeros 'n' elementos
         return temp.subList(0, n);

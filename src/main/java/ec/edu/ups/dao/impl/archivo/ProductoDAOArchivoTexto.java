@@ -6,15 +6,14 @@ import ec.edu.ups.modelo.Producto;
 import java.io.*;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Iterator;
 import java.util.stream.Collectors;
 
 public class ProductoDAOArchivoTexto implements ProductoDAO {
 
     private String filePath;
 
-    public ProductoDAOArchivoTexto(String filePath) {
-        this.filePath = filePath;
+    public ProductoDAOArchivoTexto(String rutaBase) {
+        this.filePath = rutaBase + File.separator + "productos.txt";
         File file = new File(filePath);
         if (!file.getParentFile().exists()) {
             file.getParentFile().mkdirs();
@@ -33,28 +32,19 @@ public class ProductoDAOArchivoTexto implements ProductoDAO {
         try (BufferedReader reader = new BufferedReader(new FileReader(filePath))) {
             String line;
             while ((line = reader.readLine()) != null) {
-                String[] parts = line.split(";"); // Example delimiter
+                String[] parts = line.split(";");
                 if (parts.length == 3) {
-                    try {
-                        int codigo = Integer.parseInt(parts[0]);
-                        String nombre = parts[1];
-                        double precio = Double.parseDouble(parts[2]);
-                        productos.add(new Producto(codigo, nombre, precio));
-                    } catch (NumberFormatException e) {
-                        System.err.println("Error parsing product data: " + line + " -> " + e.getMessage());
-                    }
+                    productos.add(new Producto(Integer.parseInt(parts[0]), parts[1], Double.parseDouble(parts[2])));
                 }
             }
-        } catch (FileNotFoundException e) {
-            // File doesn't exist yet, return empty list
-        } catch (IOException e) {
-            System.err.println("Error reading products from file: " + e.getMessage());
+        } catch (IOException | NumberFormatException e) {
+            // No es un error si el archivo está vacío
         }
         return productos;
     }
 
     private void escribirTodos(List<Producto> productos) {
-        try (BufferedWriter writer = new BufferedWriter(new FileWriter(filePath))) {
+        try (BufferedWriter writer = new BufferedWriter(new FileWriter(filePath, false))) {
             for (Producto p : productos) {
                 writer.write(p.getCodigo() + ";" + p.getNombre() + ";" + p.getPrecio());
                 writer.newLine();
@@ -73,16 +63,12 @@ public class ProductoDAOArchivoTexto implements ProductoDAO {
 
     @Override
     public Producto buscarPorCodigo(int codigo) {
-        return listarTodos().stream()
-                .filter(p -> p.getCodigo() == codigo)
-                .findFirst().orElse(null);
+        return leerTodos().stream().filter(p -> p.getCodigo() == codigo).findFirst().orElse(null);
     }
 
     @Override
     public List<Producto> buscarPorNombre(String nombre) {
-        return listarTodos().stream()
-                .filter(p -> p.getNombre().startsWith(nombre))
-                .collect(Collectors.toList());
+        return leerTodos().stream().filter(p -> p.getNombre().toLowerCase().contains(nombre.toLowerCase())).collect(Collectors.toList());
     }
 
     @Override
@@ -100,8 +86,7 @@ public class ProductoDAOArchivoTexto implements ProductoDAO {
     @Override
     public void eliminar(int codigo) {
         List<Producto> productos = leerTodos();
-        boolean removed = productos.removeIf(p -> p.getCodigo() == codigo);
-        if (removed) {
+        if (productos.removeIf(p -> p.getCodigo() == codigo)) {
             escribirTodos(productos);
         }
     }

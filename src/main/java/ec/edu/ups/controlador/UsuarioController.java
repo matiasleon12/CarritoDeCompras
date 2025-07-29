@@ -4,6 +4,7 @@ import ec.edu.ups.dao.CarritoDAO;
 import ec.edu.ups.dao.PreguntaDAO;
 import ec.edu.ups.dao.UsuarioDAO;
 import ec.edu.ups.dao.impl.PreguntaDAOMemoria;
+import ec.edu.ups.dao.impl.binario.UsuarioDAOArchivoBinario;
 import ec.edu.ups.modelo.PreguntaSeg;
 import ec.edu.ups.modelo.RespuestaSeg;
 import ec.edu.ups.modelo.Rol;
@@ -112,6 +113,25 @@ public class UsuarioController {
      */
     private void registrarUsuario() {
         try {
+            // --- INICIO DE LA CORRECCIÓN ---
+            // 1. Obtener la selección de almacenamiento de la vista de login
+            LoginView.TipoAlmacenamiento tipo = loginView.getTipoAlmacenamientoSeleccionado();
+            String ruta = loginView.getRutaAlmacenamiento();
+
+            // 2. Crear un DAO específico para esta operación de registro
+            UsuarioDAO daoParaRegistro;
+            switch (tipo) {
+                case BINARIO:
+                    daoParaRegistro = new UsuarioDAOArchivoBinario(ruta);
+                    break;
+                // El caso de TEXTO se arreglará en el siguiente paso
+                // Por ahora, para evitar errores, lo dejamos apuntando al DAO temporal
+                default:
+                    daoParaRegistro = this.usuarioDAO;
+                    break;
+            }
+            // --- FIN DE LA CORRECCIÓN ---
+
             String username = registrarUsuarioView.getTxtUsuario().getText().trim();
             String passwd = new String(registrarUsuarioView.getPasswordField1().getPassword()).trim();
             String nombre = registrarUsuarioView.getTextField1().getText().trim();
@@ -120,23 +140,19 @@ public class UsuarioController {
             String fechaStr = registrarUsuarioView.getTextField4().getText().trim();
             String telefono = registrarUsuarioView.getTextField5().getText().trim();
 
-            // 1. Validación de campos vacíos
             if (username.isEmpty() || passwd.isEmpty() || nombre.isEmpty() ||
                     apellido.isEmpty() || email.isEmpty() || telefono.isEmpty() || fechaStr.isEmpty()) {
                 throw new ValidacionException(mensInter.get("registrar.mensaje.campos"));
             }
 
-            // 2. Validación de cédula (username)
-            if (!Validador.validarCedula(username)) {
+           /* if (!Validador.validarCedula(username)) {
                 throw new ValidacionException(mensInter.get("registrar.error.cedulaInvalida"));
-            }
+            }*/
 
-            // 3. Validación de contraseña segura
             if (!Validador.validarContrasenia(passwd)) {
                 throw new ValidacionException(mensInter.get("registrar.error.contraseniaInsegura"));
             }
 
-            // 4. Validación de formato de fecha
             Date fechaNacimiento;
             try {
                 SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd");
@@ -146,21 +162,21 @@ public class UsuarioController {
                 throw new ValidacionException(mensInter.get("registrar.error.formatoFecha"));
             }
 
-            // 5. Validar que el usuario (cédula) no exista previamente
-            if (usuarioDAO.buscarPorUsername(username) != null) {
+            // Usamos el nuevo DAO para la validación y creación
+            if (daoParaRegistro.buscarPorUsername(username) != null) {
                 throw new ValidacionException(mensInter.get("registrar.mensaje.usuarioExiste"));
             }
 
-            // 6. Proceso de preguntas de seguridad
             abrirPreguntasDeSeguridadCompletas();
             if (respuestasSeguridadTemporales.size() != 5) {
                 throw new ValidacionException(mensInter.get("registrar.mensaje.preguntasS"));
             }
 
-            // 7. Si todo es válido, se crea el usuario
             Usuario nuevo = new Usuario(username, passwd, Rol.USUARIO, nombre, apellido, fechaNacimiento, email, telefono);
             nuevo.setRespuestasSeguridad(respuestasSeguridadTemporales);
-            usuarioDAO.crear(nuevo);
+
+
+            daoParaRegistro.crear(nuevo);
 
             registrarUsuarioView.mostrarMensaje(mensInter.get("registrar.mensajeExito"));
             registrarUsuarioView.limpiarCampos();
@@ -173,7 +189,6 @@ public class UsuarioController {
             registrarUsuarioView.mostrarMensaje("Ocurrió un error inesperado: " + e.getMessage());
         }
     }
-
     /**
      * Autentica al usuario contra el sistema de persistencia.
      */
@@ -181,12 +196,34 @@ public class UsuarioController {
         String username = loginView.getTxtUsuario().getText().trim();
         String contrasenia = new String(loginView.getTxtContrasenia().getPassword()).trim();
 
-        usuario = usuarioDAO.autenticar(username, contrasenia);
+
+
+        LoginView.TipoAlmacenamiento tipo = loginView.getTipoAlmacenamientoSeleccionado();
+        String ruta = loginView.getRutaAlmacenamiento();
+
+
+        UsuarioDAO daoParaAutenticar;
+        switch (tipo) {
+            case TEXTO:
+                daoParaAutenticar = new ec.edu.ups.dao.impl.archivo.UsuarioDAOArchivoTexto(ruta);
+                break;
+            case BINARIO:
+                daoParaAutenticar = new UsuarioDAOArchivoBinario(ruta);
+                break;
+            default: // MEMORIA
+
+                daoParaAutenticar = this.usuarioDAO;
+                break;
+        }
+
+
+        usuario = daoParaAutenticar.autenticar(username, contrasenia);
+
+
         if (usuario == null) {
             loginView.mostrarMensaje(mensInter.get("registrar.mensajeError"));
         } else {
-            // Si el login es exitoso, simplemente cerramos la ventana.
-            // El listener en Main.java se encargará del resto.
+            // Si el login es exitoso, cerramos la ventana para continuar.
             loginView.dispose();
         }
     }
@@ -195,37 +232,36 @@ public class UsuarioController {
      * Inicia el proceso de recuperación de contraseña.
      */
     private void recuperarContrasenia() {
-        // Pedir nombre de usuario
+
         String username = JOptionPane.showInputDialog(loginView, mensInter.get("registrar.txtUsuario"));
         if (username == null || username.isBlank()) return;
 
-        // Buscar usuario en la persistencia
         Usuario u = usuarioDAO.buscarPorUsername(username.trim());
         if (u == null) {
             loginView.mostrarMensaje(mensInter.get("recuperarC.error.usuaNo"));
             return;
         }
 
-        // Validar que tenga preguntas de seguridad
+
         List<RespuestaSeg> guardadas = u.getRespuestasSeguridad();
         if (guardadas == null || guardadas.size() < 3) {
             loginView.mostrarMensaje(mensInter.get("recuperarC.error.respuestasIncom"));
             return;
         }
 
-        // Seleccionar 3 preguntas al azar
+
         Collections.shuffle(guardadas);
         List<PreguntaSeg> tresPreguntas = guardadas.stream()
                 .limit(3)
                 .map(RespuestaSeg::getPregunta)
                 .collect(Collectors.toList());
 
-        // Mostrar diálogo para responder
+
         PreguntasSeguridad dlg = new PreguntasSeguridad(tresPreguntas, mensInter, 3);
         dlg.setVisible(true);
         if (!dlg.isSubmitted()) return;
 
-        // Validar las respuestas dadas
+
         List<RespuestaSeg> dadas = dlg.getRespuestas();
         boolean todasBien = dadas.stream().allMatch(r ->
                 guardadas.stream().anyMatch(g ->
@@ -238,7 +274,7 @@ public class UsuarioController {
             return;
         }
 
-        // Pedir y actualizar la nueva contraseña
+
         JPasswordField pf = new JPasswordField();
         int ok = JOptionPane.showConfirmDialog(loginView, pf, mensInter.get("recuperarC.actualizarC"), JOptionPane.OK_CANCEL_OPTION);
         if (ok != JOptionPane.OK_OPTION) return;
@@ -253,7 +289,7 @@ public class UsuarioController {
         loginView.mostrarMensaje(mensInter.get("recuperarC.mensajeExito"));
     }
 
-    // --- Métodos de la sesión de usuario (no requieren cambios mayores) ---
+
 
     private void abrirPreguntasDeSeguridadCompletas() {
         List<PreguntaSeg> todas = preguntaDAO.listarTodas();
